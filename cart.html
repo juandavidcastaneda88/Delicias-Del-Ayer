@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carrito · Delicias del Ayer</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🛍️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <main id="main">
+    <div class="container section">
+      <nav class="crumbs"><a href="index.html">Inicio</a><span class="icon">chevron_right</span><span>Carrito</span></nav>
+      <h1 style="margin-bottom:1.6rem">Tu carrito</h1>
+      <div class="checkout-grid" id="wrap"></div>
+    </div>
+  </main>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    DDA.boot();
+    const $ = (s) => document.querySelector(s);
+
+    function render() {
+      const items = Store.cartDetailed();
+      const saved = Store.state.saved;
+      const t = Store.totals();
+      if (!items.length && !saved.length) {
+        $('#wrap').innerHTML = `<div class="panel center" style="grid-column:1/-1;padding:4rem 1rem">
+          <span class="icon" style="font-size:3.4rem;color:var(--outline-variant)">remove_shopping_cart</span>
+          <h2 style="margin:1rem 0 .4rem">Tu carrito está vacío</h2>
+          <p class="muted">Descubre nuestras delicias recién horneadas.</p>
+          <a class="btn btn-primary btn-lg" href="shop.html" style="margin-top:1.2rem">Ir a la tienda</a></div>`;
+        return;
+      }
+      // cross sell: products not in cart
+      const inCart = new Set(items.map(i => i.productId));
+      const cross = Store.state.products.filter(p => !inCart.has(p.id) && !p.id.startsWith('custom')).slice(0, 4);
+
+      $('#wrap').innerHTML = `
+        <div>
+          <div class="panel">
+            ${items.length ? items.map(l => `
+              <div class="cart-line" style="padding:1rem 0;border-bottom:1px solid var(--surface-high)">
+                <img src="${DDA.esc(l.product.image)}" data-fb="${DDA.esc(l.product.fallback||'')}" onerror="DDA.imgFallback(this)" alt="${DDA.esc(l.product.name)}" style="width:80px;height:80px">
+                <div>
+                  <a href="product.html?id=${l.productId}"><div class="nm" style="font-size:1rem">${DDA.esc(l.product.name)}</div></a>
+                  ${l.variant ? `<div class="pr">${DDA.esc(l.variant)}</div>` : ''}
+                  <div class="pr">${DDA.money(l.price)} c/u</div>
+                  <div style="display:flex;gap:.8rem;align-items:center;margin-top:.5rem">
+                    <div class="qty"><button data-dec data-id="${l.productId}" data-v="${DDA.esc(l.variant||'')}">−</button><span>${l.quantity}</span><button data-inc data-id="${l.productId}" data-v="${DDA.esc(l.variant||'')}">+</button></div>
+                    <button class="btn btn-sm btn-ghost" data-save data-id="${l.productId}" data-v="${DDA.esc(l.variant||'')}"><span class="icon" style="font-size:1.1em">bookmark</span> Guardar</button>
+                    <button class="btn btn-sm btn-ghost" data-del data-id="${l.productId}" data-v="${DDA.esc(l.variant||'')}"><span class="icon" style="font-size:1.1em">delete</span></button>
+                  </div>
+                </div>
+                <b style="color:var(--primary);font-family:var(--serif);font-size:1.1rem">${DDA.money(l.lineTotal)}</b>
+              </div>`).join('') : '<p class="muted center" style="padding:1.5rem">No hay productos activos en el carrito.</p>'}
+          </div>
+
+          ${saved.length ? `<div class="panel"><h3 style="margin-bottom:1rem">Guardado para después (${saved.length})</h3>
+            ${saved.map((l, i) => { const p = Store.getProduct(l.productId) || {}; return `
+              <div class="cart-line" style="padding:.8rem 0;border-bottom:1px solid var(--surface-high)">
+                <img src="${DDA.esc(p.image||'')}" data-fb="${DDA.esc(p.fallback||'')}" onerror="DDA.imgFallback(this)" alt="${DDA.esc(p.name||'')}">
+                <div><div class="nm">${DDA.esc(p.name||'')}</div><div class="pr">${DDA.money(l.price)}</div></div>
+                <button class="btn btn-sm btn-outline" data-move="${i}">Mover al carrito</button>
+              </div>`; }).join('')}</div>` : ''}
+
+          ${cross.length ? `<div class="panel"><h3 style="margin-bottom:1rem">Acompáñalo con…</h3>
+            <div class="grid cols-4">${cross.map((p, i) => DDA.productCard(p, i)).join('')}</div></div>` : ''}
+        </div>
+
+        <aside class="order-summary">
+          <h3 style="margin-bottom:1rem">Resumen del pedido</h3>
+          <div class="field" style="margin-bottom:1rem">
+            <label for="coupon">Cupón de descuento</label>
+            <div style="display:flex;gap:.5rem">
+              <input class="input" id="coupon" placeholder="BIENVENIDO10" value="${Store.state.appliedCoupon ? Store.state.appliedCoupon.code : ''}">
+              <button class="btn btn-primary" id="applyC">Aplicar</button>
+            </div>
+            <span class="hint">Prueba: BIENVENIDO10 · ENVIOGRATIS · DULCE5</span>
+          </div>
+          <div class="summary-row"><span>Subtotal</span><span>${DDA.money(t.subtotal)}</span></div>
+          ${t.discount ? `<div class="summary-row" style="color:var(--success)"><span>Descuento ${Store.state.appliedCoupon ? '(' + Store.state.appliedCoupon.code + ')' : ''}</span><span>−${DDA.money(t.discount)}</span></div>` : ''}
+          <div class="summary-row"><span>Envío</span><span>${t.shipping ? DDA.money(t.shipping) : 'Gratis'}</span></div>
+          <div class="summary-row"><span>Impuestos (8%)</span><span>${DDA.money(t.tax)}</span></div>
+          <div class="summary-row total"><span>Total</span><b>${DDA.money(t.total)}</b></div>
+          <div style="margin:.8rem 0;font-size:.82rem;color:var(--on-surface-variant)">
+            <span class="icon" style="color:var(--secondary);font-size:1.1em">local_shipping</span>
+            ${t.subtotal >= Store.state.settings.freeShippingFrom ? '¡Tienes envío gratis!' : `Te faltan ${DDA.money(Store.state.settings.freeShippingFrom - t.subtotal)} para envío gratis`}
+          </div>
+          <a class="btn btn-primary btn-block btn-lg" href="checkout.html" ${items.length ? '' : 'style="pointer-events:none;opacity:.5"'}>Finalizar compra</a>
+          <a class="btn btn-ghost btn-block" href="shop.html" style="margin-top:.6rem">Seguir comprando</a>
+        </aside>`;
+
+      $('#wrap').querySelectorAll('[data-inc]').forEach(b => b.onclick = () => { const c = cur(b); Store.setQty(b.dataset.id, b.dataset.v || null, c.quantity + 1); });
+      $('#wrap').querySelectorAll('[data-dec]').forEach(b => b.onclick = () => { const c = cur(b); Store.setQty(b.dataset.id, b.dataset.v || null, c.quantity - 1); });
+      $('#wrap').querySelectorAll('[data-del]').forEach(b => b.onclick = () => Store.removeFromCart(b.dataset.id, b.dataset.v || null));
+      $('#wrap').querySelectorAll('[data-save]').forEach(b => b.onclick = () => { Store.saveForLater(b.dataset.id, b.dataset.v || null); DDA.toast('Guardado para después'); });
+      $('#wrap').querySelectorAll('[data-move]').forEach(b => b.onclick = () => Store.moveToCart(+b.dataset.move));
+      const ap = $('#applyC'); if (ap) ap.onclick = () => { const r = Store.applyCoupon($('#coupon').value); DDA.toast(r.msg, r.ok ? 'success' : 'error'); };
+      function cur(b) { return Store.cartDetailed().find(l => l.productId === b.dataset.id && (l.variant || '') === (b.dataset.v || '')); }
+      DDA.rescanReveal();
+    }
+    Store.subscribe(render);
+    render();
+  </script>
+</body>
+</html>

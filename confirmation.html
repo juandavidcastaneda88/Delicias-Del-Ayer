@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pedido confirmado · Delicias del Ayer</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>✅</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <style>@media print{.site-header,.site-footer,.noprint{display:none!important}body{background:#fff}}</style>
+</head>
+<body>
+  <main id="main">
+    <div class="container section">
+      <div id="view"></div>
+    </div>
+  </main>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    DDA.boot();
+    const $ = (s) => document.querySelector(s);
+    const order = JSON.parse(sessionStorage.getItem('lastOrder') || 'null');
+    if (!order) { $('#view').innerHTML = '<div class="panel center" style="padding:3rem"><h2>No hay un pedido reciente</h2><a class="btn btn-primary" href="shop.html" style="margin-top:1rem">Ir a la tienda</a></div>'; }
+    else {
+      const eta = new Date(Date.now() + 3 * 3600 * 1000).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+      $('#view').innerHTML = `
+        <div class="center noprint" style="margin-bottom:2rem">
+          <div style="width:84px;height:84px;border-radius:50%;background:var(--success-bg);display:grid;place-items:center;margin:0 auto 1rem">
+            <span class="icon" style="font-size:2.6rem;color:var(--success)">check_circle</span></div>
+          <span class="eyebrow" style="color:var(--success)">Pago aprobado</span>
+          <h1>¡Gracias por tu pedido!</h1>
+          <p class="lead" style="margin:.6rem auto 0">Hemos recibido <b>${order.id}</b>. Te enviamos la confirmación a ${DDA.esc(order.customerEmail)}.</p>
+        </div>
+
+        <div class="panel" style="max-width:720px;margin-inline:auto" id="invoice">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;border-bottom:1px solid var(--surface-high);padding-bottom:1rem;margin-bottom:1rem">
+            <div><div class="brand-name" style="font-size:1.3rem">Delicias del Ayer</div>
+              <p class="muted" style="font-size:.85rem">${DDA.esc(Store.state.settings.address)}<br>${DDA.esc(Store.state.settings.email)}</p></div>
+            <div style="text-align:right"><h3 style="font-size:1.1rem">Factura ${order.id}</h3>
+              <p class="muted" style="font-size:.85rem">${new Date(order.createdAt).toLocaleString('es-CO')}</p>
+              <span class="tag green">${DDA.esc(order.status)}</span></div>
+          </div>
+          <div class="grid cols-2" style="margin-bottom:1rem">
+            <div><h4 style="font-family:var(--sans);font-size:.74rem;text-transform:uppercase;letter-spacing:.1em;color:var(--outline)">Cliente</h4>
+              <p>${DDA.esc(order.customerName)}<br>${DDA.esc(order.customerEmail)}</p></div>
+            <div><h4 style="font-family:var(--sans);font-size:.74rem;text-transform:uppercase;letter-spacing:.1em;color:var(--outline)">Entrega</h4>
+              <p>${DDA.esc(order.deliveryAddress || 'Recoger en tienda')}<br><span class="muted">Estimada: hoy ~${eta}</span></p></div>
+          </div>
+          <div class="table-wrap"><table class="data"><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th style="text-align:right">Total</th></tr></thead>
+            <tbody>${order.items.map(i => `<tr><td>${DDA.esc(i.productName)}</td><td>${i.quantity}</td><td>${DDA.money(i.price)}</td><td style="text-align:right">${DDA.money(i.price * i.quantity)}</td></tr>`).join('')}</tbody></table></div>
+          <div style="max-width:260px;margin-left:auto;margin-top:1rem">
+            <div class="summary-row"><span>Subtotal</span><span>${DDA.money(order.subtotal)}</span></div>
+            ${order.discount ? `<div class="summary-row"><span>Descuento</span><span>−${DDA.money(order.discount)}</span></div>` : ''}
+            <div class="summary-row"><span>Envío</span><span>${order.shipping ? DDA.money(order.shipping) : 'Gratis'}</span></div>
+            <div class="summary-row"><span>Impuestos</span><span>${DDA.money(order.tax || 0)}</span></div>
+            <div class="summary-row total"><span>Total (${DDA.esc(order.paymentMethod)})</span><b>${DDA.money(order.total)}</b></div>
+          </div>
+        </div>
+
+        <!-- tracking -->
+        <div class="panel noprint" style="max-width:720px;margin:1.6rem auto 0">
+          <h3 style="margin-bottom:1.2rem">Seguimiento del pedido</h3>
+          <div class="steps" style="max-width:100%">
+            <div class="step done"><div class="dot"><span class="icon" style="font-size:1.1em">check</span></div><div class="lbl">Confirmado</div><div class="bar"></div></div>
+            <div class="step active"><div class="dot">2</div><div class="lbl">En preparación</div><div class="bar"></div></div>
+            <div class="step"><div class="dot">3</div><div class="lbl">En reparto</div><div class="bar"></div></div>
+            <div class="step"><div class="dot">4</div><div class="lbl">Entregado</div></div>
+          </div>
+        </div>
+
+        <div class="center noprint" style="margin-top:2rem;display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="window.print()"><span class="icon">download</span> Descargar factura (PDF)</button>
+          <a class="btn btn-outline" href="account.html#orders">Ver mis pedidos</a>
+          <a class="btn btn-ghost" href="shop.html">Seguir comprando</a>
+        </div>`;
+    }
+  </script>
+</body>
+</html>

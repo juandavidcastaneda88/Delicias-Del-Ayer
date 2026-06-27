@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de administración · Delicias del Ayer</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>📊</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <main id="main">
+    <div class="container section">
+      <div id="view"></div>
+    </div>
+  </main>
+
+  <!-- product editor modal -->
+  <div class="modal" id="prodModal"><div class="modal-card" style="width:min(560px,100%)">
+    <div class="modal-head"><h3 id="pmTitle">Nuevo producto</h3><button class="icon-btn close" id="pmClose"><span class="icon">close</span></button></div>
+    <div class="modal-body"><form id="prodForm">
+      <input type="hidden" id="pm_id">
+      <div class="field"><label>Nombre *</label><input class="input" id="pm_name" required></div>
+      <div class="grid cols-2">
+        <div class="field"><label>Precio (USD) *</label><input class="input" id="pm_price" type="number" step="0.01" min="0" required></div>
+        <div class="field"><label>Stock *</label><input class="input" id="pm_stock" type="number" min="0" required></div>
+      </div>
+      <div class="field"><label>Categoría</label><select class="input" id="pm_cat"></select></div>
+      <div class="field"><label>URL de imagen</label><input class="input" id="pm_img" placeholder="https://…"></div>
+      <div class="field"><label>Descripción</label><textarea class="input" id="pm_desc"></textarea></div>
+      <button class="btn btn-primary btn-block" type="submit">Guardar producto</button>
+    </form></div>
+  </div></div>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    DDA.boot();
+    const $ = (s) => document.querySelector(s);
+
+    function gate() {
+      $('#view').innerHTML = `<div class="panel center" style="max-width:460px;margin:2rem auto;padding:3rem 2rem">
+        <span class="icon" style="font-size:3rem;color:var(--outline-variant)">admin_panel_settings</span>
+        <h2 style="margin:1rem 0 .4rem">Panel restringido</h2>
+        <p class="muted">Inicia sesión con una cuenta de equipo para acceder.</p>
+        <button class="btn btn-primary btn-lg" id="loginBtn" style="margin-top:1.2rem">Iniciar sesión</button>
+        <p class="muted" style="font-size:.8rem;margin-top:1rem">Demo admin: admin@delicias.com · admin123</p></div>`;
+      $('#loginBtn').onclick = () => DDA.openAuth(() => render());
+    }
+
+    const NAV = [['dashboard','Dashboard','space_dashboard'],['orders','Pedidos','local_shipping'],['products','Productos','cake'],['inventory','Inventario','inventory_2'],['customers','Clientes','groups'],['suppliers','Proveedores','local_shipping'],['reports','Reportes','analytics'],['settings','Ajustes','settings']];
+
+    function render() {
+      const u = Store.currentUser();
+      if (!u || !['Administrator','Manager','Employee'].includes(u.role)) return gate();
+      let active = (location.hash || '#dashboard').slice(1);
+      if (!NAV.find(n => n[0] === active)) active = 'dashboard';
+      $('#view').innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.4rem">
+          <div><span class="eyebrow">Panel de administración</span><h1 style="font-size:clamp(1.6rem,3vw,2.2rem)">${NAV.find(n=>n[0]===active)[1]}</h1></div>
+          <div style="display:flex;align-items:center;gap:.6rem"><span class="tag brown">${DDA.esc(u.role)}</span>
+            <a class="btn btn-ghost btn-sm" href="index.html"><span class="icon">storefront</span> Ver tienda</a></div>
+        </div>
+        <div class="dash-layout">
+          <aside class="dash-side"><div class="me"><img src="${u.avatar}" alt=""><div><b>${DDA.esc(u.name)}</b><span>${DDA.esc(u.role)}</span></div></div>
+            <nav class="dash-nav">${NAV.map(n => `<button class="${n[0]===active?'active':''}" data-tab="${n[0]}"><span class="icon">${n[2]}</span> ${n[1]}</button>`).join('')}
+              <button id="logout" style="color:var(--error)"><span class="icon">logout</span> Salir</button></nav></aside>
+          <div id="panel"></div>
+        </div>`;
+      $('#logout').onclick = () => { Store.logout(); location.reload(); };
+      $('#view').querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { location.hash = b.dataset.tab; render(); });
+      panel(active);
+    }
+
+    function panel(tab) {
+      const p = $('#panel');
+      const orders = Store.state.orders, products = Store.state.products, users = Store.state.users;
+      const revenue = orders.reduce((s, o) => s + o.total, 0);
+
+      if (tab === 'dashboard') {
+        const lowStock = products.filter(p => p.stock <= 5);
+        p.innerHTML = `
+          <div class="stat-grid">
+            ${statCard('var(--success-bg)','var(--success)','payments',DDA.money(revenue),'Ingresos totales','+12.5%','up')}
+            ${statCard('var(--primary-fixed)','var(--primary)','receipt_long',orders.length,'Pedidos','+8 esta semana','up')}
+            ${statCard('var(--info-bg)','var(--info)','groups',users.filter(u=>u.role==='Customer').length,'Clientes','+3 nuevos','up')}
+            ${statCard('var(--warn-bg)','var(--warn)','inventory_2',lowStock.length,'Stock bajo',lowStock.length?'Requiere atención':'Todo OK',lowStock.length?'down':'up')}
+          </div>
+          <div class="panel"><div class="panel-head"><h3>Ventas de la semana</h3><span class="tag green">+12.5% vs anterior</span></div>
+            <div class="bars" id="chart"></div></div>
+          <div class="grid cols-2">
+            <div class="panel"><div class="panel-head"><h3>Pedidos recientes</h3><a class="btn btn-ghost btn-sm" onclick="location.hash='orders'">Ver todos</a></div>${ordersTable(orders.slice(0,4),true)}</div>
+            <div class="panel"><div class="panel-head"><h3>Top productos</h3></div>
+              ${products.slice().sort((a,b)=>b.reviewsCount-a.reviewsCount).slice(0,5).map(pr=>`
+                <div style="display:flex;align-items:center;gap:.8rem;padding:.5rem 0;border-bottom:1px solid var(--surface-high)">
+                  <img src="${DDA.esc(pr.image)}" data-fb="${DDA.esc(pr.fallback||'')}" onerror="DDA.imgFallback(this)" style="width:40px;height:40px;border-radius:8px;object-fit:cover" alt="">
+                  <div style="flex:1"><b style="font-size:.9rem">${DDA.esc(pr.name)}</b><div class="muted" style="font-size:.78rem">${pr.reviewsCount} reseñas · ${DDA.money(pr.price)}</div></div>
+                  <span class="tag ${pr.stock<=5?'red':'green'}">${pr.stock} u</span></div>`).join('')}</div>
+          </div>
+          <div class="panel"><div class="panel-head"><h3><span class="icon" style="color:var(--secondary)">auto_awesome</span> Recomendaciones IA</h3></div>
+            <div class="grid cols-2" style="gap:1rem">
+              ${aiCard('trending_up','Predicción de demanda','Se espera +18% de pedidos de Tarta de la Abuela este fin de semana. Considera hornear 15 unidades extra.')}
+              ${aiCard('inventory','Alerta de inventario','Las Trufas de Cacao están por agotarse (5 u). Reabastece con Cacao de Origen Tumaco (5 días de entrega).')}
+              ${aiCard('group','Comportamiento de clientes','El 64% de quienes compran croissants también añaden café. Crea un combo para subir el ticket medio.')}
+              ${aiCard('schedule','Hora pico','Tus ventas se concentran entre 8–10am. Programa promociones flash en ese horario.')}
+            </div></div>`;
+        // animate chart
+        const data = [3200,4100,3800,5200,6100,7400,5600];
+        const labels = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+        const max = Math.max(...data);
+        $('#chart').innerHTML = data.map((v,i)=>`<div class="bar" style="height:0" data-h="${(v/max*100)}"><b>$${(v/1000).toFixed(1)}k</b><span>${labels[i]}</span></div>`).join('');
+        setTimeout(()=>$('#chart').querySelectorAll('.bar').forEach(b=>b.style.height=b.dataset.h+'%'),100);
+      }
+
+      if (tab === 'orders') {
+        p.innerHTML = `<div class="panel"><div class="panel-head"><h3>Todos los pedidos (${orders.length})</h3>
+          <div style="display:flex;gap:.5rem"><button class="btn btn-sm btn-outline" id="expCsv"><span class="icon">download</span> Exportar CSV</button></div></div>
+          ${ordersTable(orders,true)}</div>`;
+        $('#expCsv').onclick = exportOrdersCsv;
+        wireStatus();
+      }
+
+      if (tab === 'products') {
+        p.innerHTML = `<div class="panel"><div class="panel-head"><h3>Catálogo (${products.length})</h3>
+          <button class="btn btn-primary btn-sm" id="newProd"><span class="icon">add</span> Nuevo producto</button></div>
+          <div class="table-wrap"><table class="data"><thead><tr><th>Producto</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Valoración</th><th>Acciones</th></tr></thead>
+          <tbody>${products.map(pr=>`<tr>
+            <td><div class="prod-cell"><img src="${DDA.esc(pr.image)}" data-fb="${DDA.esc(pr.fallback||'')}" onerror="DDA.imgFallback(this)" alt=""><b>${DDA.esc(pr.name)}</b></div></td>
+            <td>${DDA.esc(pr.category)}</td><td>${DDA.money(pr.price)}</td>
+            <td><span class="tag ${pr.stock<=5?'red':pr.stock<=12?'amber':'green'}">${pr.stock}</span></td>
+            <td>${pr.rating}★</td>
+            <td><div class="row-actions"><button data-edit="${pr.id}" title="Editar"><span class="icon">edit</span></button>
+              <button data-del="${pr.id}" title="Eliminar"><span class="icon">delete</span></button></div></td></tr>`).join('')}</tbody></table></div></div>`;
+        $('#newProd').onclick = () => openProd();
+        p.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openProd(b.dataset.edit));
+        p.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ if(confirm('¿Eliminar este producto?')){ Store.deleteProduct(b.dataset.del); DDA.toast('Producto eliminado'); render(); }});
+      }
+
+      if (tab === 'inventory') {
+        const low = products.filter(p=>p.stock<=5);
+        p.innerHTML = `
+          ${low.length?`<div class="panel" style="border-left:4px solid var(--error)"><h3 style="color:var(--error);font-size:1.1rem"><span class="icon">warning</span> ${low.length} producto(s) con stock crítico</h3>
+            <p class="muted">${low.map(p=>p.name).join(', ')}</p></div>`:''}
+          <div class="panel"><div class="panel-head"><h3>Control de inventario en tiempo real</h3></div>
+          <div class="table-wrap"><table class="data"><thead><tr><th>SKU</th><th>Producto</th><th>Stock</th><th>Estado</th><th>Ajustar</th></tr></thead>
+          <tbody>${products.map(pr=>`<tr>
+            <td><code style="font-size:.8rem">${DDA.esc(pr.sku||'—')}</code></td>
+            <td><div class="prod-cell"><img src="${DDA.esc(pr.image)}" data-fb="${DDA.esc(pr.fallback||'')}" onerror="DDA.imgFallback(this)" alt="">${DDA.esc(pr.name)}</div></td>
+            <td><b style="font-size:1.05rem">${pr.stock}</b></td>
+            <td><span class="tag ${pr.stock<=5?'red':pr.stock<=12?'amber':'green'}">${pr.stock<=5?'Crítico':pr.stock<=12?'Bajo':'Óptimo'}</span></td>
+            <td><div class="qty"><button data-adj="${pr.id}" data-d="-1">−</button><span>${pr.stock}</span><button data-adj="${pr.id}" data-d="1">+</button></div></td></tr>`).join('')}</tbody></table></div></div>`;
+        p.querySelectorAll('[data-adj]').forEach(b=>b.onclick=()=>{ Store.adjustStock(b.dataset.adj,+b.dataset.d); panel('inventory'); });
+      }
+
+      if (tab === 'customers') {
+        p.innerHTML = `<div class="panel"><div class="panel-head"><h3>Clientes y equipo (${users.length})</h3></div>
+          <div class="table-wrap"><table class="data"><thead><tr><th>Usuario</th><th>Correo</th><th>Rol</th><th>Teléfono</th><th>Pedidos</th></tr></thead>
+          <tbody>${users.map(us=>{ const oc = Store.state.orders.filter(o=>o.userId===us.id||o.customerEmail===us.email).length; return `<tr>
+            <td><div class="prod-cell"><img src="${us.avatar}" alt="" style="border-radius:50%">${DDA.esc(us.name)}</div></td>
+            <td>${DDA.esc(us.email)}</td><td><span class="tag ${us.role==='Customer'?'blue':'brown'}">${DDA.esc(us.role)}</span></td>
+            <td>${DDA.esc(us.phone||'—')}</td><td>${oc}</td></tr>`;}).join('')}</tbody></table></div></div>`;
+      }
+
+      if (tab === 'suppliers') {
+        p.innerHTML = `<div class="panel"><div class="panel-head"><h3>Proveedores</h3></div>
+          <div class="table-wrap"><table class="data"><thead><tr><th>Proveedor</th><th>Suministra</th><th>Teléfono</th><th>Entrega</th><th></th></tr></thead>
+          <tbody>${Store.state.suppliers.map(s=>`<tr><td><b>${DDA.esc(s.name)}</b></td><td>${DDA.esc(s.product)}</td><td>${DDA.esc(s.phone)}</td>
+            <td><span class="tag brown">${DDA.esc(s.lead)}</span></td><td><button class="btn btn-sm btn-ghost">Pedir</button></td></tr>`).join('')}</tbody></table></div></div>`;
+      }
+
+      if (tab === 'reports') {
+        const byCat = {};
+        Store.state.orders.forEach(o=>o.items.forEach(i=>{ const pr=Store.getProduct(i.productId); const c=pr?pr.category:'Otros'; byCat[c]=(byCat[c]||0)+i.price*i.quantity; }));
+        const cats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+        const max = Math.max(...cats.map(c=>c[1]),1);
+        p.innerHTML = `
+          <div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
+            ${statCard('var(--success-bg)','var(--success)','trending_up',DDA.money(revenue),'Ingresos','','')}
+            ${statCard('var(--primary-fixed)','var(--primary)','shopping_basket',orders.reduce((s,o)=>s+o.items.reduce((a,i)=>a+i.quantity,0),0),'Unidades vendidas','','')}
+            ${statCard('var(--info-bg)','var(--info)','receipt',DDA.money(revenue/Math.max(orders.length,1)),'Ticket medio','','')}
+          </div>
+          <div class="panel"><div class="panel-head"><h3>Ingresos por categoría</h3>
+            <div style="display:flex;gap:.5rem"><button class="btn btn-sm btn-outline" id="expReport"><span class="icon">download</span> CSV</button>
+            <button class="btn btn-sm btn-outline" onclick="window.print()"><span class="icon">picture_as_pdf</span> PDF</button></div></div>
+            ${cats.map(([c,v])=>`<div style="margin-bottom:1rem"><div style="display:flex;justify-content:space-between;font-size:.9rem;margin-bottom:.3rem"><b>${DDA.esc(c)}</b><span>${DDA.money(v)}</span></div>
+              <div class="progress"><i style="width:${v/max*100}%"></i></div></div>`).join('')}</div>`;
+        $('#expReport').onclick = () => { downloadCsv('reporte-categorias.csv', [['Categoria','Ingresos'],...cats.map(c=>[c[0],c[1].toFixed(2)])]); };
+      }
+
+      if (tab === 'settings') {
+        const s = Store.state.settings;
+        p.innerHTML = `<div class="panel"><div class="panel-head"><h3>Información del negocio</h3></div>
+          <div class="grid cols-2">
+            <div class="field"><label>Nombre</label><input class="input" id="s_name" value="${DDA.esc(s.business)}"></div>
+            <div class="field"><label>Teléfono</label><input class="input" id="s_phone" value="${DDA.esc(s.phone)}"></div>
+          </div>
+          <div class="field"><label>Dirección</label><input class="input" id="s_addr" value="${DDA.esc(s.address)}"></div>
+          <div class="field"><label>Horario</label><input class="input" id="s_hours" value="${DDA.esc(s.hours)}"></div>
+          <div class="grid cols-2">
+            <div class="field"><label>IVA (%)</label><input class="input" id="s_tax" type="number" step="0.01" value="${(s.taxRate*100).toFixed(0)}"></div>
+            <div class="field"><label>Envío gratis desde ($)</label><input class="input" id="s_free" type="number" value="${s.freeShippingFrom}"></div>
+          </div>
+          <button class="btn btn-primary" id="saveSettings">Guardar ajustes</button></div>
+          <div class="panel"><h3 style="margin-bottom:.8rem">Métodos de pago activos</h3>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap">${['Nequi','Daviplata','PSE','Wompi','Mercado Pago','Tarjeta','Stripe','PayPal','Contra entrega'].map(m=>`<span class="chip active">${m}</span>`).join('')}</div></div>
+          <div class="panel" style="border-left:4px solid var(--error)"><h3 style="margin-bottom:.4rem">Zona de mantenimiento</h3>
+            <p class="muted" style="margin-bottom:.8rem">Restablece todos los datos de la demo (productos, pedidos, sesión) a su estado inicial.</p>
+            <button class="btn btn-outline" id="resetData" style="color:var(--error);box-shadow:inset 0 0 0 2px var(--error)">Restablecer datos demo</button></div>`;
+        $('#saveSettings').onclick = () => { Object.assign(Store.state.settings,{business:$('#s_name').value,phone:$('#s_phone').value,address:$('#s_addr').value,hours:$('#s_hours').value,taxRate:(+$('#s_tax').value)/100,freeShippingFrom:+$('#s_free').value}); Store.emit(); DDA.toast('Ajustes guardados','success'); };
+        $('#resetData').onclick = () => { if(confirm('Esto borrará todos los cambios de la demo. ¿Continuar?')){ Store.reset(); DDA.toast('Datos restablecidos'); setTimeout(()=>location.reload(),600); }};
+      }
+    }
+
+    function statCard(bg,fg,ic,val,label,delta,dir){
+      return `<div class="stat"><div class="ic" style="background:${bg}"><span class="icon" style="color:${fg}">${ic}</span></div>
+        <b>${val}</b><span>${label}</span>${delta?`<div class="delta ${dir}">${delta}</div>`:''}</div>`;
+    }
+    function aiCard(ic,title,text){
+      return `<div style="display:flex;gap:.9rem;padding:1rem;background:var(--surface-low);border-radius:var(--radius)">
+        <span class="pm-ic" style="background:var(--secondary-container)"><span class="icon" style="color:var(--primary)">${ic}</span></span>
+        <div><b style="color:var(--primary)">${title}</b><p class="muted" style="font-size:.85rem;margin-top:.2rem">${text}</p></div></div>`;
+    }
+    function ordersTable(orders,admin){
+      const cls=(s)=>/entreg/i.test(s)?'green':/reparto/i.test(s)?'blue':/pend/i.test(s)?'amber':'brown';
+      const statuses=['Pagado','En preparación','En reparto','Entregado','Pendiente de pago'];
+      return `<div class="table-wrap"><table class="data"><thead><tr><th>Pedido</th><th>Cliente</th><th>Total</th><th>Pago</th><th>Estado</th></tr></thead>
+        <tbody>${orders.map(o=>`<tr><td><b>${o.id}</b></td><td>${DDA.esc(o.customerName)}</td><td><b>${DDA.money(o.total)}</b></td><td>${DDA.esc(o.paymentMethod)}</td>
+        <td>${admin?`<select class="input" data-status="${o.id}" style="padding:.35rem .6rem;font-size:.82rem;width:auto">${statuses.map(st=>`<option ${o.status===st?'selected':''}>${st}</option>`).join('')}</select>`:`<span class="tag ${cls(o.status)}">${DDA.esc(o.status)}</span>`}</td></tr>`).join('')}</tbody></table></div>`;
+    }
+    function wireStatus(){ document.querySelectorAll('[data-status]').forEach(sel=>sel.onchange=()=>{ Store.updateOrderStatus(sel.dataset.status,sel.value); DDA.toast('Estado actualizado a "'+sel.value+'"','success'); }); }
+
+    function exportOrdersCsv(){
+      const rows=[['Pedido','Cliente','Email','Total','Pago','Estado','Fecha'],...Store.state.orders.map(o=>[o.id,o.customerName,o.customerEmail,o.total,o.paymentMethod,o.status,o.createdAt])];
+      downloadCsv('pedidos.csv',rows);
+    }
+    function downloadCsv(name,rows){
+      const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+      const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download=name; a.click();
+      DDA.toast('Archivo exportado','success');
+    }
+
+    // product modal
+    const pm = $('#prodModal');
+    $('#pm_cat').innerHTML = [...new Set(Store.state.products.map(p=>p.category))].map(c=>`<option>${c}</option>`).join('');
+    function openProd(id){
+      const pr = id ? Store.getProduct(id) : null;
+      $('#pmTitle').textContent = pr ? 'Editar producto' : 'Nuevo producto';
+      $('#pm_id').value = pr?pr.id:''; $('#pm_name').value=pr?pr.name:''; $('#pm_price').value=pr?pr.price:''; $('#pm_stock').value=pr?pr.stock:'';
+      $('#pm_cat').value=pr?pr.category:$('#pm_cat').options[0].value; $('#pm_img').value=pr?pr.image:''; $('#pm_desc').value=pr?pr.description:'';
+      pm.classList.add('open');
+    }
+    $('#pmClose').onclick=()=>pm.classList.remove('open');
+    pm.onclick=(e)=>{ if(e.target===pm) pm.classList.remove('open'); };
+    $('#prodForm').onsubmit=(e)=>{ e.preventDefault();
+      Store.saveProduct({ id:$('#pm_id').value||undefined, name:$('#pm_name').value, price:+$('#pm_price').value, stock:+$('#pm_stock').value,
+        category:$('#pm_cat').value, image:$('#pm_img').value||DDA_DATA.IMG.abuela, description:$('#pm_desc').value });
+      pm.classList.remove('open'); DDA.toast('Producto guardado','success'); render();
+    };
+
+    addEventListener('hashchange', render);
+    render();
+  </script>
+</body>
+</html>

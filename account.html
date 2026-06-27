@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi cuenta · Delicias del Ayer</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>👤</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <main id="main">
+    <div class="container section">
+      <div id="view"></div>
+    </div>
+  </main>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    DDA.boot();
+    const $ = (s) => document.querySelector(s);
+
+    function gate() {
+      $('#view').innerHTML = `<div class="panel center" style="max-width:460px;margin:2rem auto;padding:3rem 2rem">
+        <span class="icon" style="font-size:3rem;color:var(--outline-variant)">lock</span>
+        <h2 style="margin:1rem 0 .4rem">Accede a tu cuenta</h2>
+        <p class="muted">Inicia sesión para ver tus pedidos, favoritos y direcciones.</p>
+        <button class="btn btn-primary btn-lg" id="loginBtn" style="margin-top:1.2rem">Iniciar sesión / Registrarme</button>
+        <p class="muted" style="font-size:.8rem;margin-top:1rem">Demo: cliente@ejemplo.com · cliente123</p></div>`;
+      $('#loginBtn').onclick = () => DDA.openAuth(() => render());
+    }
+
+    const TABS = {
+      Customer: [['dashboard', 'Resumen', 'space_dashboard'], ['orders', 'Mis pedidos', 'receipt_long'], ['favorites', 'Favoritos', 'favorite'], ['addresses', 'Direcciones', 'home_pin'], ['coupons', 'Cupones', 'redeem'], ['notifications', 'Notificaciones', 'notifications'], ['profile', 'Perfil', 'manage_accounts']]
+    };
+
+    function render() {
+      const u = Store.currentUser();
+      if (!u) return gate();
+      const tabs = TABS.Customer;
+      let active = (location.hash || '#dashboard').slice(1);
+      if (!tabs.find(t => t[0] === active)) active = 'dashboard';
+
+      $('#view').innerHTML = `
+        <h1 style="margin-bottom:1.4rem">Hola, ${DDA.esc(u.name.split(' ')[0])} 👋</h1>
+        <div class="dash-layout">
+          <aside class="dash-side">
+            <div class="me"><img src="${u.avatar}" alt=""><div><b>${DDA.esc(u.name)}</b><span>${DDA.esc(u.role)}</span></div></div>
+            <nav class="dash-nav">
+              ${tabs.map(t => `<button class="${t[0] === active ? 'active' : ''}" data-tab="${t[0]}"><span class="icon">${t[2]}</span> ${t[1]}
+                ${t[0] === 'notifications' && Store.unreadCount() ? `<span class="badge" style="position:static;margin-left:auto">${Store.unreadCount()}</span>` : ''}</button>`).join('')}
+              <button id="logout" style="color:var(--error)"><span class="icon">logout</span> Cerrar sesión</button>
+            </nav>
+            ${['Administrator','Manager','Employee'].includes(u.role) ? '<a class="btn btn-gold btn-block" href="admin.html" style="margin-top:.8rem">Ir al panel admin</a>' : ''}
+          </aside>
+          <div id="panel"></div>
+        </div>`;
+      $('#logout').onclick = () => { Store.logout(); DDA.toast('Sesión cerrada'); location.reload(); };
+      $('#view').querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { location.hash = b.dataset.tab; render(); });
+      panel(active, u);
+    }
+
+    function panel(tab, u) {
+      const p = $('#panel');
+      const orders = Store.ordersForUser();
+      if (tab === 'dashboard') {
+        const spent = orders.reduce((s, o) => s + o.total, 0);
+        p.innerHTML = `
+          <div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
+            <div class="stat"><div class="ic" style="background:var(--primary-fixed)"><span class="icon" style="color:var(--primary)">receipt_long</span></div><b>${orders.length}</b><span>Pedidos realizados</span></div>
+            <div class="stat"><div class="ic" style="background:var(--success-bg)"><span class="icon" style="color:var(--success)">payments</span></div><b>${DDA.money(spent)}</b><span>Total gastado</span></div>
+            <div class="stat"><div class="ic" style="background:var(--warn-bg)"><span class="icon" style="color:var(--warn)">favorite</span></div><b>${Store.state.favorites.length}</b><span>Favoritos</span></div>
+          </div>
+          <div class="panel"><div class="panel-head"><h3>Pedidos recientes</h3><a class="btn btn-ghost btn-sm" href="#orders" onclick="location.hash='orders';">Ver todos</a></div>
+            ${ordersTable(orders.slice(0, 3))}</div>
+          <div class="banner"><div><span class="eyebrow" style="color:var(--gold)">Programa de fidelidad</span><h2 style="font-size:1.6rem">Tienes ${Math.floor(spent)} puntos dulces</h2>
+            <p class="lead">Acumula puntos con cada compra y canjéalos por descuentos.</p><div class="progress" style="margin-top:1rem;max-width:320px"><i style="width:${Math.min(100, spent)}%"></i></div></div>
+            <div style="text-align:center"><span class="icon" style="font-size:4rem;color:var(--gold)">workspace_premium</span></div></div>`;
+      }
+      if (tab === 'orders') {
+        p.innerHTML = `<div class="panel"><div class="panel-head"><h3>Mis pedidos</h3></div>${ordersTable(orders)}</div>`;
+      }
+      if (tab === 'favorites') {
+        const favs = Store.state.favorites.map(id => Store.getProduct(id)).filter(Boolean);
+        p.innerHTML = `<div class="panel"><div class="panel-head"><h3>Mis favoritos (${favs.length})</h3></div>
+          ${favs.length ? `<div class="grid cols-3">${favs.map((x, i) => DDA.productCard(x, i)).join('')}</div>` : '<p class="muted">Aún no tienes favoritos. Explora la <a href="shop.html" style="color:var(--primary);font-weight:700">tienda</a>.</p>'}</div>`;
+        DDA.rescanReveal();
+      }
+      if (tab === 'addresses') {
+        p.innerHTML = `<div class="panel"><div class="panel-head"><h3>Mis direcciones</h3></div>
+          <div class="grid cols-2">
+            <div style="border:1.5px solid var(--outline-variant);border-radius:var(--radius);padding:1.2rem">
+              <span class="tag green">Principal</span><h4 style="margin:.5rem 0;font-family:var(--sans)">Casa</h4>
+              <p class="muted">${DDA.esc(u.address || 'Sin dirección guardada')}</p>
+              <p class="muted" style="font-size:.85rem">${DDA.esc(u.phone)}</p></div>
+            <button class="btn btn-outline" style="border-style:dashed;min-height:140px;flex-direction:column" id="addAddr"><span class="icon" style="font-size:1.8rem">add</span> Añadir dirección</button>
+          </div></div>`;
+        $('#addAddr').onclick = () => DDA.toast('Función de demostración: edita tu dirección en Perfil.');
+      }
+      if (tab === 'coupons') {
+        p.innerHTML = `<div class="panel"><div class="panel-head"><h3>Mis cupones</h3></div>
+          <div class="grid cols-2">${Store.state.coupons.map(c => `
+            <div style="border:1.5px dashed var(--secondary);border-radius:var(--radius);padding:1.2rem;background:var(--surface-low)">
+              <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-family:var(--serif);font-size:1.3rem;color:var(--primary)">${c.code}</b>
+                <button class="btn btn-sm btn-gold" data-copy="${c.code}">Copiar</button></div>
+              <p class="muted" style="margin-top:.4rem">${DDA.esc(c.desc)}</p></div>`).join('')}</div></div>`;
+        p.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => { navigator.clipboard?.writeText(b.dataset.copy); DDA.toast('Cupón ' + b.dataset.copy + ' copiado', 'success'); });
+      }
+      if (tab === 'notifications') {
+        Store.markNotificationsRead();
+        p.innerHTML = `<div class="panel"><div class="panel-head"><h3>Notificaciones</h3></div>
+          ${Store.state.notifications.map(n => `<div style="display:flex;gap:.9rem;padding:.9rem 0;border-bottom:1px solid var(--surface-high)">
+            <span class="pm-ic" style="width:40px;height:40px;border-radius:50%;background:var(--surface-container)"><span class="icon" style="color:var(--primary)">${n.icon}</span></span>
+            <div><p>${DDA.esc(n.text)}</p><span class="muted" style="font-size:.8rem">${DDA.esc(n.date)}</span></div></div>`).join('')}</div>`;
+      }
+      if (tab === 'profile') {
+        p.innerHTML = `<div class="panel"><div class="panel-head"><h3>Mi perfil</h3></div>
+          <div class="grid cols-2">
+            <div class="field"><label>Nombre</label><input class="input" id="pf_name" value="${DDA.esc(u.name)}"></div>
+            <div class="field"><label>Teléfono</label><input class="input" id="pf_phone" value="${DDA.esc(u.phone)}"></div>
+          </div>
+          <div class="field"><label>Correo</label><input class="input" id="pf_email" value="${DDA.esc(u.email)}" type="email"></div>
+          <div class="field"><label>Dirección</label><input class="input" id="pf_addr" value="${DDA.esc(u.address)}"></div>
+          <button class="btn btn-primary" id="saveProfile">Guardar cambios</button></div>
+          <div class="panel"><h3 style="margin-bottom:.8rem">Preferencias de notificación</h3>
+            <label class="checkbox"><input type="checkbox" checked> Ofertas y novedades por correo</label>
+            <label class="checkbox" style="margin-top:.6rem"><input type="checkbox" checked> Estado de mis pedidos por WhatsApp</label>
+            <label class="checkbox" style="margin-top:.6rem"><input type="checkbox"> Boletín semanal del blog</label></div>`;
+        $('#saveProfile').onclick = () => { Store.updateProfile({ name: $('#pf_name').value, phone: $('#pf_phone').value, email: $('#pf_email').value, address: $('#pf_addr').value }); DDA.toast('Perfil actualizado', 'success'); render(); };
+      }
+    }
+
+    function ordersTable(orders) {
+      if (!orders.length) return '<p class="muted">Todavía no tienes pedidos. <a href="shop.html" style="color:var(--primary);font-weight:700">Haz tu primer pedido</a>.</p>';
+      const cls = (s) => /entreg/i.test(s) ? 'green' : /reparto/i.test(s) ? 'blue' : /pend/i.test(s) ? 'amber' : 'brown';
+      return `<div class="table-wrap"><table class="data"><thead><tr><th>Pedido</th><th>Fecha</th><th>Artículos</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+        <tbody>${orders.map(o => `<tr>
+          <td><b>${o.id}</b></td><td>${new Date(o.createdAt).toLocaleDateString('es-CO')}</td>
+          <td>${o.items.reduce((s, i) => s + i.quantity, 0)} items</td><td><b>${DDA.money(o.total)}</b></td>
+          <td><span class="tag ${cls(o.status)}">${DDA.esc(o.status)}</span></td>
+          <td><button class="btn btn-sm btn-ghost" data-track="${o.id}">Detalle</button></td></tr>`).join('')}</tbody></table></div>`;
+    }
+
+    // order detail via toast-like alert panel
+    document.addEventListener('click', (e) => {
+      const t = e.target.closest('[data-track]'); if (!t) return;
+      const o = Store.state.orders.find(x => x.id === t.dataset.track); if (!o) return;
+      DDA.toast(`Pedido ${o.id}: ${o.status} · ${DDA.money(o.total)}`);
+    });
+
+    addEventListener('hashchange', render);
+    render();
+  </script>
+</body>
+</html>

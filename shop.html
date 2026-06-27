@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tienda · Delicias del Ayer</title>
+  <meta name="description" content="Compra en línea tartas, croissants, trufas y pan colombiano. Filtra por categoría, precio y valoración.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🥐</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <main id="main">
+    <div class="container">
+      <nav class="crumbs"><a href="index.html">Inicio</a><span class="icon">chevron_right</span><span>Tienda</span></nav>
+      <div style="margin-bottom:1.5rem"><span class="eyebrow">Catálogo completo</span><h1 style="font-size:clamp(1.8rem,4vw,2.6rem)">Nuestra tienda</h1></div>
+    </div>
+
+    <div class="container section" style="padding-top:0">
+      <div class="shop-layout">
+        <!-- FILTERS -->
+        <aside class="filters" id="filters">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h4 style="margin:0">Filtros</h4>
+            <button class="icon-btn filter-toggle" id="filterClose"><span class="icon">close</span></button>
+          </div>
+          <div class="input-icon">
+            <span class="icon">search</span>
+            <input class="input" id="searchInput" type="search" placeholder="Buscar productos…" aria-label="Buscar">
+          </div>
+          <div class="filter-group">
+            <h4>Categoría</h4>
+            <div id="catFilters"></div>
+          </div>
+          <div class="filter-group">
+            <h4>Precio máximo</h4>
+            <input type="range" id="priceRange" min="2" max="90" value="90" step="1">
+            <div class="range-val"><span>$2</span><span id="priceVal">$90</span></div>
+          </div>
+          <div class="filter-group">
+            <h4>Valoración</h4>
+            <label><input type="radio" name="rate" value="0" checked> Todas</label>
+            <label><input type="radio" name="rate" value="4.5"> 4.5★ o más</label>
+            <label><input type="radio" name="rate" value="4.8"> 4.8★ o más</label>
+          </div>
+          <button class="btn btn-ghost btn-block" id="clearFilters">Limpiar filtros</button>
+        </aside>
+
+        <!-- RESULTS -->
+        <div>
+          <div class="shop-toolbar">
+            <button class="btn btn-outline btn-sm filter-toggle" id="filterOpen"><span class="icon">tune</span> Filtros</button>
+            <span class="count" id="resultCount"></span>
+            <div style="display:flex;align-items:center;gap:.5rem;margin-left:auto">
+              <label for="sortSelect" class="muted" style="font-size:.85rem">Ordenar:</label>
+              <select class="input" id="sortSelect" style="width:auto;padding:.5rem .8rem">
+                <option value="featured">Destacados</option>
+                <option value="price-asc">Precio: menor a mayor</option>
+                <option value="price-desc">Precio: mayor a menor</option>
+                <option value="rating">Mejor valorados</option>
+                <option value="name">Nombre A–Z</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="activeChips" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem"></div>
+          <div class="grid cols-3" id="grid"></div>
+          <div id="noResults" hidden class="center" style="padding:4rem 1rem;color:var(--on-surface-variant)">
+            <span class="icon" style="font-size:3rem;color:var(--outline-variant)">search_off</span>
+            <h3 style="margin-top:1rem">Sin resultados</h3><p>Prueba con otros filtros o términos de búsqueda.</p>
+          </div>
+
+          <!-- Recently viewed -->
+          <section id="recentSection" hidden style="margin-top:3.5rem">
+            <h2 style="font-size:1.5rem;margin-bottom:1.2rem">Vistos recientemente</h2>
+            <div class="grid cols-4" id="recentGrid"></div>
+          </section>
+        </div>
+      </div>
+    </div>
+    <div class="overlay" id="filtersOverlay"></div>
+  </main>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    DDA.boot();
+    const $ = (s) => document.querySelector(s);
+    const products = Store.state.products;
+    const cats = [...new Set(products.map(p => p.category))];
+    const params = new URLSearchParams(location.search);
+
+    const stateF = { q: '', cats: new Set(), price: 90, rate: 0, sort: 'featured' };
+    if (params.get('cat')) stateF.cats.add(params.get('cat'));
+    if (location.hash === '#search') setTimeout(() => $('#searchInput').focus(), 200);
+
+    // build category checkboxes
+    $('#catFilters').innerHTML = cats.map(c => `
+      <label><input type="checkbox" value="${DDA.esc(c)}" ${stateF.cats.has(c) ? 'checked' : ''}> ${DDA.esc(c)}</label>`).join('');
+
+    function render() {
+      let list = products.filter(p =>
+        (!stateF.q || (p.name + p.description + p.category).toLowerCase().includes(stateF.q.toLowerCase())) &&
+        (stateF.cats.size === 0 || stateF.cats.has(p.category)) &&
+        p.price <= stateF.price &&
+        p.rating >= stateF.rate
+      );
+      const s = stateF.sort;
+      list.sort((a, b) =>
+        s === 'price-asc' ? a.price - b.price :
+        s === 'price-desc' ? b.price - a.price :
+        s === 'rating' ? b.rating - a.rating :
+        s === 'name' ? a.name.localeCompare(b.name) :
+        (b.featured - a.featured) || (b.rating - a.rating));
+
+      $('#resultCount').textContent = `${list.length} producto${list.length !== 1 ? 's' : ''}`;
+      $('#noResults').hidden = list.length > 0;
+      $('#grid').innerHTML = list.map((p, i) => DDA.productCard(p, i % 4)).join('');
+
+      // active chips
+      const chips = [];
+      stateF.cats.forEach(c => chips.push(`<button class="chip active" data-rm-cat="${DDA.esc(c)}">${DDA.esc(c)} ✕</button>`));
+      if (stateF.q) chips.push(`<button class="chip active" data-rm-q>“${DDA.esc(stateF.q)}” ✕</button>`);
+      if (stateF.rate > 0) chips.push(`<button class="chip active" data-rm-rate>${stateF.rate}★+ ✕</button>`);
+      $('#activeChips').innerHTML = chips.join('');
+      $('#activeChips').querySelectorAll('[data-rm-cat]').forEach(b => b.onclick = () => { stateF.cats.delete(b.dataset.rmCat); syncInputs(); render(); });
+      const rq = $('#activeChips').querySelector('[data-rm-q]'); if (rq) rq.onclick = () => { stateF.q = ''; $('#searchInput').value = ''; render(); };
+      const rr = $('#activeChips').querySelector('[data-rm-rate]'); if (rr) rr.onclick = () => { stateF.rate = 0; syncInputs(); render(); };
+      DDA.rescanReveal();
+    }
+    function syncInputs() {
+      document.querySelectorAll('#catFilters input').forEach(i => i.checked = stateF.cats.has(i.value));
+      document.querySelectorAll('input[name=rate]').forEach(i => i.checked = (+i.value === stateF.rate));
+    }
+
+    $('#searchInput').addEventListener('input', (e) => { stateF.q = e.target.value; render(); });
+    $('#catFilters').addEventListener('change', (e) => { const v = e.target.value; e.target.checked ? stateF.cats.add(v) : stateF.cats.delete(v); render(); });
+    $('#priceRange').addEventListener('input', (e) => { stateF.price = +e.target.value; $('#priceVal').textContent = '$' + e.target.value; render(); });
+    document.querySelectorAll('input[name=rate]').forEach(i => i.addEventListener('change', () => { stateF.rate = +i.value; render(); }));
+    $('#sortSelect').addEventListener('change', (e) => { stateF.sort = e.target.value; render(); });
+    $('#clearFilters').addEventListener('click', () => { stateF.q = ''; stateF.cats.clear(); stateF.price = 90; stateF.rate = 0; $('#searchInput').value = ''; $('#priceRange').value = 90; $('#priceVal').textContent = '$90'; syncInputs(); render(); });
+
+    // mobile filter drawer
+    $('#filterOpen').onclick = () => { $('#filters').classList.add('open'); $('#filtersOverlay').classList.add('open'); };
+    const closeF = () => { $('#filters').classList.remove('open'); $('#filtersOverlay').classList.remove('open'); };
+    $('#filterClose').onclick = closeF; $('#filtersOverlay').onclick = closeF;
+
+    // recently viewed
+    const recent = Store.state.recent.map(id => Store.getProduct(id)).filter(Boolean);
+    if (recent.length) { $('#recentSection').hidden = false; $('#recentGrid').innerHTML = recent.map((p, i) => DDA.productCard(p, i)).join(''); }
+
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="pageTitle">Producto · Delicias del Ayer</title>
+  <meta name="description" id="pageDesc" content="Detalle de producto de Delicias del Ayer.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🥐</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <main id="main">
+    <div class="container">
+      <nav class="crumbs" id="crumbs"></nav>
+      <div class="pd-grid" id="pd"></div>
+
+      <div id="tabsWrap"></div>
+
+      <section class="section" style="padding-bottom:0">
+        <h2 style="font-size:1.6rem;margin-bottom:1.4rem">También te puede gustar</h2>
+        <div class="grid cols-4" id="related"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    DDA.boot();
+    const $ = (s) => document.querySelector(s);
+    const id = new URLSearchParams(location.search).get('id') || 'prod_abuela';
+    const p = Store.getProduct(id) || Store.state.products[0];
+    Store.pushRecent(p.id);
+    document.getElementById('pageTitle').textContent = p.name + ' · Delicias del Ayer';
+    document.getElementById('pageDesc').setAttribute('content', p.description.slice(0, 150));
+
+    $('#crumbs').innerHTML = `<a href="index.html">Inicio</a><span class="icon">chevron_right</span>
+      <a href="shop.html?cat=${encodeURIComponent(p.category)}">${DDA.esc(p.category)}</a>
+      <span class="icon">chevron_right</span><span>${DDA.esc(p.name)}</span>`;
+
+    let curVariant = p.variants && p.variants.length ? p.variants[0].name : null;
+    let curPrice = p.variants && p.variants.length ? p.variants[0].price : p.price;
+    let curImg = 0;
+    const gallery = p.gallery && p.gallery.length ? p.gallery : [p.image];
+
+    function renderPD() {
+      const fav = Store.isFav(p.id);
+      $('#pd').innerHTML = `
+        <div class="pd-gallery">
+          <div class="main-img" id="mainImg" title="Pasa el cursor para ampliar">
+            <img src="${DDA.esc(gallery[curImg])}" data-fb="${DDA.esc(p.fallback || '')}" onerror="DDA.imgFallback(this)" alt="${DDA.esc(p.name)}" id="zoomImg">
+          </div>
+          <div class="pd-thumbs">
+            ${gallery.map((g, i) => `<button class="${i === curImg ? 'active' : ''}" data-img="${i}"><img src="${DDA.esc(g)}" onerror="DDA.imgFallback(this)" alt="Vista ${i + 1}"></button>`).join('')}
+          </div>
+        </div>
+        <div class="pd-info">
+          <span class="product-cat">${DDA.esc(p.category)}</span>
+          <h1 style="margin:.3rem 0 .6rem">${DDA.esc(p.name)}</h1>
+          <div class="rating-row" style="margin-bottom:1rem">${DDA.stars(p.rating)} <span>${p.rating} · ${p.reviewsCount} reseñas</span>
+            <span class="tag ${p.stock > 5 ? 'green' : 'amber'}" style="margin-left:.5rem">${p.stock > 0 ? 'En stock (' + p.stock + ')' : 'Agotado'}</span></div>
+          <div class="price" id="pdPrice">${DDA.money(curPrice)}</div>
+          <p class="lead" style="margin:1rem 0 1.4rem">${DDA.esc(p.description)}</p>
+          ${p.variants && p.variants.length > 1 ? `
+          <div style="margin-bottom:1.2rem"><label style="font-weight:700;font-size:.85rem;color:var(--on-surface-variant)">Tamaño</label>
+            <div class="variant-opts">${p.variants.map(v => `<button class="variant ${v.name === curVariant ? 'active' : ''}" data-var="${DDA.esc(v.name)}" data-price="${v.price}">${DDA.esc(v.name)}</button>`).join('')}</div></div>` : ''}
+          <div style="display:flex;gap:.8rem;align-items:center;margin-bottom:1.2rem">
+            <div class="qty" style="border-width:1.5px">
+              <button id="qDec" aria-label="Restar">−</button><span id="qVal">1</span><button id="qInc" aria-label="Sumar">+</button>
+            </div>
+            <button class="fav-btn ${fav ? 'active' : ''}" id="pdFav" style="position:static;width:46px;height:46px" aria-label="Favorito"><span class="icon">favorite</span></button>
+          </div>
+          <div style="display:flex;gap:.8rem;flex-wrap:wrap">
+            <button class="btn btn-primary btn-lg" id="addBtn"><span class="icon">add_shopping_cart</span> Añadir al carrito</button>
+            <button class="btn btn-gold btn-lg" id="buyBtn">Comprar ahora</button>
+          </div>
+          <div style="display:flex;gap:1.4rem;margin-top:1.6rem;flex-wrap:wrap;color:var(--on-surface-variant);font-size:.86rem">
+            <span><span class="icon" style="color:var(--secondary)">local_shipping</span> Envío el mismo día</span>
+            <span><span class="icon" style="color:var(--secondary)">eco</span> 100% natural</span>
+            <span><span class="icon" style="color:var(--secondary)">verified</span> Calidad garantizada</span>
+          </div>
+        </div>`;
+
+      let qty = 1;
+      const setPrice = () => $('#pdPrice').textContent = DDA.money(curPrice);
+      $('#pd').querySelectorAll('[data-img]').forEach(b => b.onclick = () => { curImg = +b.dataset.img; renderPD(); });
+      $('#pd').querySelectorAll('[data-var]').forEach(b => b.onclick = () => { curVariant = b.dataset.var; curPrice = +b.dataset.price; $('#pd').querySelectorAll('[data-var]').forEach(x => x.classList.toggle('active', x === b)); setPrice(); });
+      $('#qInc').onclick = () => { qty++; $('#qVal').textContent = qty; };
+      $('#qDec').onclick = () => { qty = Math.max(1, qty - 1); $('#qVal').textContent = qty; };
+      $('#pdFav').onclick = () => { const on = Store.toggleFav(p.id); $('#pdFav').classList.toggle('active', on); DDA.toast(on ? 'Guardado en favoritos' : 'Quitado de favoritos'); };
+      $('#addBtn').onclick = () => { Store.addToCart(p.id, qty, curVariant); DDA.toast('Añadido al carrito', 'success'); DDA.openCart(); };
+      $('#buyBtn').onclick = () => { Store.addToCart(p.id, qty, curVariant); location.href = 'checkout.html'; };
+      // simple zoom on hover
+      const mi = $('#mainImg'), zi = $('#zoomImg');
+      mi.onmousemove = (e) => { const r = mi.getBoundingClientRect(); zi.style.transformOrigin = `${(e.clientX - r.left) / r.width * 100}% ${(e.clientY - r.top) / r.height * 100}%`; zi.style.transform = 'scale(1.8)'; };
+      mi.onmouseleave = () => { zi.style.transform = 'scale(1)'; };
+    }
+    renderPD();
+
+    // ---- tabs ----
+    function renderTabs() {
+      const reviews = p.reviews || [];
+      $('#tabsWrap').innerHTML = `
+        <div class="pd-tabs" role="tablist">
+          <button class="active" data-tab="desc">Descripción</button>
+          <button data-tab="ingr">Ingredientes</button>
+          <button data-tab="nutri">Nutrición</button>
+          <button data-tab="rev">Reseñas (${reviews.length})</button>
+          <button data-tab="faq">Preguntas</button>
+        </div>
+        <div id="tabBody" style="max-width:760px"></div>`;
+      const bodies = {
+        desc: `<p class="lead">${DDA.esc(p.description)}</p><p class="muted" style="margin-top:1rem">SKU: ${DDA.esc(p.sku || '—')} · Categoría: ${DDA.esc(p.category)}</p>`,
+        ingr: `<ul style="list-style:none;display:grid;gap:.6rem">${(p.ingredients || []).map(i => `<li><span class="icon" style="color:var(--success);font-size:1.1em">check_circle</span> ${DDA.esc(i)}</li>`).join('') || '<li class="muted">Información no disponible.</li>'}</ul>
+          ${(p.allergens || []).length ? `<p style="margin-top:1.2rem"><b>Alérgenos:</b> ${p.allergens.map(a => `<span class="tag amber">${DDA.esc(a)}</span>`).join(' ')}</p>` : ''}`,
+        nutri: `<p class="muted">Valores aproximados por porción.</p><div class="nutrition-grid">
+          <div class="box"><b>${p.nutrition?.calories ?? '—'}</b><span>Calorías</span></div>
+          <div class="box"><b>${p.nutrition?.fat ?? '—'}</b><span>Grasas</span></div>
+          <div class="box"><b>${p.nutrition?.carbs ?? '—'}</b><span>Carbohidratos</span></div>
+          <div class="box"><b>${p.nutrition?.protein ?? '—'}</b><span>Proteínas</span></div></div>`,
+        rev: reviewsHtml(),
+        faq: `${(p.questions || []).map(q => `<div class="review"><b>${DDA.esc(q.q)}</b><p class="muted" style="margin-top:.3rem">${DDA.esc(q.a)}</p></div>`).join('') || '<p class="muted">Aún no hay preguntas. ¡Sé el primero en preguntar!</p>'}
+          <form id="qForm" style="margin-top:1.4rem;display:flex;gap:.6rem">
+            <input class="input" id="qInput" placeholder="Escribe tu pregunta…"><button class="btn btn-primary" type="submit">Enviar</button></form>`
+      };
+      function reviewsHtml() {
+        return `
+          <div style="margin-bottom:1.4rem">${reviews.map(r => `
+            <div class="review"><div class="head"><b>${DDA.esc(r.author)}</b><span class="muted" style="font-size:.8rem">${DDA.esc(r.date)}</span></div>
+            ${DDA.stars(r.rating)}<p style="margin-top:.4rem">${DDA.esc(r.comment)}</p></div>`).join('') || '<p class="muted">Todavía no hay reseñas.</p>'}</div>
+          <div class="panel" style="box-shadow:none;border:1.5px solid var(--outline-variant)">
+            <h3 style="font-size:1.1rem;margin-bottom:.8rem">Deja tu reseña</h3>
+            <div id="starPick" style="font-size:1.8rem;color:var(--gold);cursor:pointer;margin-bottom:.6rem">
+              ${[1,2,3,4,5].map(i => `<span class="icon" data-star="${i}" style="cursor:pointer">star</span>`).join('')}</div>
+            <textarea class="input" id="revText" placeholder="Cuéntanos tu experiencia…"></textarea>
+            <button class="btn btn-primary" id="revSubmit" style="margin-top:.8rem">Publicar reseña</button>
+          </div>`;
+      }
+      const tabs = $('#tabsWrap').querySelectorAll('[data-tab]');
+      const show = (k) => { $('#tabBody').innerHTML = bodies[k]; tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === k)); wireTab(k); DDA.rescanReveal(); };
+      tabs.forEach(t => t.onclick = () => show(t.dataset.tab));
+      show('desc');
+
+      function wireTab(k) {
+        if (k === 'rev') {
+          let picked = 5;
+          $('#tabBody').querySelectorAll('[data-star]').forEach(s => {
+            s.onmouseenter = () => paint(+s.dataset.star);
+            s.onclick = () => { picked = +s.dataset.star; paint(picked); };
+          });
+          const paint = (n) => $('#tabBody').querySelectorAll('[data-star]').forEach(s => s.style.opacity = (+s.dataset.star <= n ? 1 : .3));
+          paint(picked);
+          $('#revSubmit').onclick = () => {
+            const txt = $('#revText').value.trim(); if (!txt) { DDA.toast('Escribe tu reseña', 'error'); return; }
+            DDA.requireAuth(() => {
+              Store.addReview(p.id, { author: Store.currentUser().name, rating: picked, comment: txt });
+              DDA.toast('¡Gracias por tu reseña!', 'success'); renderTabs();
+            });
+          };
+        }
+        if (k === 'faq') {
+          $('#qForm').onsubmit = (e) => { e.preventDefault(); const v = $('#qInput').value.trim(); if (!v) return;
+            p.questions = p.questions || []; p.questions.push({ q: v, a: 'Gracias por tu pregunta, te responderemos pronto.' }); Store.emit(); DDA.toast('Pregunta enviada', 'success'); renderTabs(); };
+        }
+      }
+    }
+    renderTabs();
+
+    // related
+    const rel = Store.state.products.filter(x => x.category === p.category && x.id !== p.id).concat(Store.state.products.filter(x => x.category !== p.category)).slice(0, 4);
+    $('#related').innerHTML = rel.map((x, i) => DDA.productCard(x, i)).join('');
+    DDA.rescanReveal();
+  </script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pedidos Especiales · Delicias del Ayer</title>
+  <meta name="description" content="Diseña una tarta personalizada para bodas, cumpleaños y eventos. Elige bizcocho, relleno, cobertura, tamaño y mensaje.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🎂</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <main id="main">
+    <div class="container">
+      <nav class="crumbs"><a href="index.html">Inicio</a><span class="icon">chevron_right</span><span>Pedidos especiales</span></nav>
+      <div style="max-width:640px;margin-bottom:2rem">
+        <span class="eyebrow">Diseño a tu medida</span>
+        <h1>Crea tu tarta soñada</h1>
+        <p class="lead" style="margin-top:.6rem">Personaliza cada detalle para tu celebración. Calcularemos el precio en tiempo real y lo añadimos a tu carrito.</p>
+      </div>
+
+      <div class="builder-grid section" style="padding-top:0">
+        <form id="builder">
+          <div class="panel">
+            <h3 style="margin-bottom:.9rem">1 · Ocasión</h3>
+            <div class="opt-row" data-group="occasion">
+              <div class="opt active" data-val="Cumpleaños">Cumpleaños</div>
+              <div class="opt" data-val="Boda">Boda<small>+$20</small></div>
+              <div class="opt" data-val="Aniversario">Aniversario</div>
+              <div class="opt" data-val="Corporativo">Corporativo<small>+$15</small></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 style="margin-bottom:.9rem">2 · Tamaño</h3>
+            <div class="opt-row" data-group="size">
+              <div class="opt active" data-val="6" data-price="38">6 porciones<small>$38</small></div>
+              <div class="opt" data-val="10" data-price="58">10 porciones<small>$58</small></div>
+              <div class="opt" data-val="16" data-price="82">16 porciones<small>$82</small></div>
+              <div class="opt" data-val="24" data-price="120">24 porciones<small>$120</small></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 style="margin-bottom:.9rem">3 · Bizcocho</h3>
+            <div class="opt-row" data-group="sponge">
+              <div class="opt active" data-val="Vainilla">Vainilla</div>
+              <div class="opt" data-val="Chocolate">Chocolate</div>
+              <div class="opt" data-val="Red Velvet" data-price="6">Red Velvet<small>+$6</small></div>
+              <div class="opt" data-val="Zanahoria">Zanahoria</div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 style="margin-bottom:.9rem">4 · Relleno</h3>
+            <div class="opt-row" data-group="filling">
+              <div class="opt active" data-val="Crema pastelera">Crema pastelera</div>
+              <div class="opt" data-val="Arequipe">Arequipe</div>
+              <div class="opt" data-val="Frambuesa" data-price="5">Frambuesa<small>+$5</small></div>
+              <div class="opt" data-val="Ganache" data-price="7">Ganache<small>+$7</small></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 style="margin-bottom:.9rem">5 · Cobertura</h3>
+            <div class="opt-row" data-group="frosting">
+              <div class="opt active" data-val="Buttercream">Buttercream</div>
+              <div class="opt" data-val="Fondant" data-price="12">Fondant<small>+$12</small></div>
+              <div class="opt" data-val="Chocolate">Chocolate</div>
+              <div class="opt" data-val="Merengue">Merengue</div>
+            </div>
+            <div style="margin-top:1rem">
+              <label style="font-weight:700;font-size:.85rem;color:var(--on-surface-variant)">Color principal</label>
+              <div class="opt-row" style="margin-top:.5rem" id="swatches"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 style="margin-bottom:.9rem">6 · Mensaje y detalles</h3>
+            <div class="field"><label for="msg">Mensaje en la tarta</label>
+              <input class="input" id="msg" maxlength="40" placeholder="Ej: ¡Feliz cumpleaños, Sofía!"></div>
+            <div class="field"><label for="notes">Notas para el pastelero</label>
+              <textarea class="input" id="notes" placeholder="Alergias, temática, referencias…"></textarea></div>
+            <div class="field"><label for="date">Fecha de entrega</label>
+              <input class="input" id="date" type="date"></div>
+          </div>
+        </form>
+
+        <aside class="order-summary">
+          <h3 style="margin-bottom:1rem">Resumen</h3>
+          <div id="recap" style="display:flex;flex-direction:column;gap:.5rem;font-size:.9rem"></div>
+          <div class="summary-row total" style="margin-top:1rem"><span>Precio estimado</span><b id="price">$38.00</b></div>
+          <p class="muted" style="font-size:.78rem;margin:.6rem 0 1rem">Precio orientativo. Confirmaremos por WhatsApp antes de hornear.</p>
+          <button class="btn btn-primary btn-block btn-lg" id="addCake"><span class="icon">add_shopping_cart</span> Añadir al carrito</button>
+          <a class="btn btn-outline btn-block" href="https://wa.me/" style="margin-top:.6rem"><span class="icon">chat</span> Consultar por WhatsApp</a>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    DDA.boot();
+    const $ = (s) => document.querySelector(s);
+    const sel = { occasion: 'Cumpleaños', size: '6', sponge: 'Vainilla', filling: 'Crema pastelera', frosting: 'Buttercream', color: 'Crema' };
+    const occCost = { 'Cumpleaños': 0, 'Boda': 20, 'Aniversario': 0, 'Corporativo': 15 };
+    const colors = [['Crema', '#f6e7c9'], ['Rosa', '#f3c4cf'], ['Chocolate', '#6b4423'], ['Menta', '#bfe3cf'], ['Lavanda', '#cfc1e8'], ['Marfil', '#fff8ec']];
+
+    $('#swatches').innerHTML = colors.map((c, i) => `<button type="button" class="swatch ${i === 0 ? 'active' : ''}" data-color="${c[0]}" style="background:${c[1]}" title="${c[0]}" aria-label="${c[0]}"></button>`).join('');
+
+    function basePrice() {
+      const sizeP = +document.querySelector('[data-group=size] .opt.active').dataset.price;
+      let extra = occCost[sel.occasion] || 0;
+      ['sponge', 'filling', 'frosting'].forEach(g => { const el = document.querySelector(`[data-group=${g}] .opt.active`); if (el && el.dataset.price) extra += +el.dataset.price; });
+      return sizeP + extra;
+    }
+    function recap() {
+      $('#recap').innerHTML = [
+        ['Ocasión', sel.occasion], ['Tamaño', sel.size + ' porciones'], ['Bizcocho', sel.sponge],
+        ['Relleno', sel.filling], ['Cobertura', sel.frosting], ['Color', sel.color],
+        ['Mensaje', $('#msg').value || '—'], ['Entrega', $('#date').value || 'Por definir']
+      ].map(([k, v]) => `<div class="summary-row" style="margin:0"><span>${k}</span><b style="color:var(--primary)">${DDA.esc(v)}</b></div>`).join('');
+      $('#price').textContent = DDA.money(basePrice());
+    }
+    document.querySelectorAll('.opt-row[data-group]').forEach(row => {
+      const g = row.dataset.group;
+      row.querySelectorAll('.opt').forEach(o => o.onclick = () => {
+        row.querySelectorAll('.opt').forEach(x => x.classList.remove('active')); o.classList.add('active');
+        sel[g] = o.dataset.val; recap();
+      });
+    });
+    $('#swatches').querySelectorAll('.swatch').forEach(s => s.onclick = () => {
+      $('#swatches').querySelectorAll('.swatch').forEach(x => x.classList.remove('active')); s.classList.add('active'); sel.color = s.dataset.color; recap();
+    });
+    ['msg', 'date', 'notes'].forEach(id => $('#' + id).addEventListener('input', recap));
+
+    $('#addCake').onclick = () => {
+      const price = basePrice();
+      // create a one-off custom product so it lives in the cart & catalog snapshot
+      const customId = 'custom_' + Date.now();
+      Store.state.products.push({
+        id: customId, name: `Tarta personalizada (${sel.occasion})`, slug: customId, category: 'Pedidos Especiales',
+        price, stock: 1, image: DDA_DATA.IMG.victoria, fallback: DDA_DATA.FALLBACK.victoria, gallery: [DDA_DATA.IMG.victoria],
+        description: `${sel.size} porciones · ${sel.sponge}/${sel.filling}/${sel.frosting} · Color ${sel.color}${$('#msg').value ? ' · “' + $('#msg').value + '”' : ''}`,
+        rating: 5, reviewsCount: 0, variants: [], ingredients: [], allergens: [], nutrition: {}, reviews: [], questions: []
+      });
+      Store.addToCart(customId, 1);
+      DDA.toast('Tu tarta personalizada está en el carrito', 'success'); DDA.openCart();
+    };
+    recap();
+  </script>
+</body>
+</html>

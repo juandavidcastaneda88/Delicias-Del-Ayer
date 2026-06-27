@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout · Delicias del Ayer</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>💳</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <main id="main">
+    <div class="container section">
+      <h1 style="margin-bottom:1.6rem">Finalizar compra</h1>
+      <div class="steps" id="steps">
+        <div class="step active" data-step="1"><div class="dot">1</div><div class="lbl">Datos</div><div class="bar"></div></div>
+        <div class="step" data-step="2"><div class="dot">2</div><div class="lbl">Envío</div><div class="bar"></div></div>
+        <div class="step" data-step="3"><div class="dot">3</div><div class="lbl">Pago</div><div class="bar"></div></div>
+        <div class="step" data-step="4"><div class="dot">4</div><div class="lbl">Confirmar</div></div>
+      </div>
+      <div class="checkout-grid">
+        <div id="stepBody"></div>
+        <aside class="order-summary" id="summary"></aside>
+      </div>
+    </div>
+  </main>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    DDA.boot();
+    const $ = (s) => document.querySelector(s);
+    if (!Store.cartDetailed().length) { location.href = 'cart.html'; }
+
+    const user = Store.currentUser();
+    const form = {
+      name: user ? user.name : '', email: user ? user.email : '', phone: user ? user.phone : '',
+      address: user ? user.address : '', city: 'Bogotá', notes: '',
+      shipping: 'standard', paymentMethod: 'Nequi'
+    };
+    let step = 1;
+
+    const shippingOpts = [
+      { id: 'standard', label: 'Envío estándar', desc: 'Hoy, 2–4 horas', price: 'Según subtotal' },
+      { id: 'express', label: 'Envío exprés', desc: 'En 1 hora', price: '+$6.00' },
+      { id: 'pickup', label: 'Recoger en tienda', desc: 'La Candelaria', price: 'Gratis' }
+    ];
+    const payMethods = [
+      ['Nequi', 'NEQ', 'Pago con billetera Nequi'], ['Daviplata', 'DAV', 'Pago con Daviplata'],
+      ['PSE', 'PSE', 'Débito desde tu banco'], ['Wompi', 'WOM', 'Pasarela Wompi'],
+      ['Mercado Pago', 'MP', 'Tarjetas y saldo MP'], ['Tarjeta de crédito', 'card', 'Visa · Mastercard · Amex'],
+      ['Stripe', 'S', 'Pago internacional con Stripe'], ['PayPal', 'PP', 'Tu cuenta PayPal'],
+      ['Contra entrega', 'COD', 'Paga en efectivo al recibir']
+    ];
+
+    function summary() {
+      const t = Store.totals();
+      const items = Store.cartDetailed();
+      const exp = form.shipping === 'express' ? 6 : 0;
+      const ship = form.shipping === 'pickup' ? 0 : t.shipping + exp;
+      const total = +(t.subtotal - t.discount + ship + t.tax).toFixed(2);
+      window._finalShip = ship; window._finalTotal = total;
+      $('#summary').innerHTML = `
+        <h3 style="margin-bottom:1rem">Tu pedido</h3>
+        <div style="max-height:240px;overflow:auto;margin-bottom:1rem">
+        ${items.map(l => `<div class="cart-line" style="margin-bottom:.7rem">
+          <img src="${DDA.esc(l.product.image)}" data-fb="${DDA.esc(l.product.fallback||'')}" onerror="DDA.imgFallback(this)" alt="">
+          <div><div class="nm" style="font-size:.85rem">${DDA.esc(l.product.name)}</div><div class="pr">x${l.quantity}</div></div>
+          <b style="font-size:.85rem">${DDA.money(l.lineTotal)}</b></div>`).join('')}
+        </div>
+        <div class="summary-row"><span>Subtotal</span><span>${DDA.money(t.subtotal)}</span></div>
+        ${t.discount ? `<div class="summary-row" style="color:var(--success)"><span>Descuento</span><span>−${DDA.money(t.discount)}</span></div>` : ''}
+        <div class="summary-row"><span>Envío</span><span>${ship ? DDA.money(ship) : 'Gratis'}</span></div>
+        <div class="summary-row"><span>Impuestos</span><span>${DDA.money(t.tax)}</span></div>
+        <div class="summary-row total"><span>Total</span><b>${DDA.money(total)}</b></div>`;
+    }
+
+    function setStep(n) {
+      step = n;
+      document.querySelectorAll('.step').forEach(s => {
+        const d = +s.dataset.step; s.classList.toggle('active', d === n); s.classList.toggle('done', d < n);
+      });
+      renderStep(); summary(); scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function renderStep() {
+      const b = $('#stepBody');
+      if (step === 1) {
+        b.innerHTML = `<div class="panel"><h3 style="margin-bottom:1.2rem">Tus datos de contacto</h3>
+          <div class="grid cols-2">
+            <div class="field"><label>Nombre completo *</label><input class="input" id="f_name" value="${DDA.esc(form.name)}" required></div>
+            <div class="field"><label>Teléfono *</label><input class="input" id="f_phone" value="${DDA.esc(form.phone)}" placeholder="+57 ..." required></div>
+          </div>
+          <div class="field"><label>Correo electrónico *</label><input class="input" id="f_email" type="email" value="${DDA.esc(form.email)}" required></div>
+          <span class="err" id="err1"></span>
+          <div style="display:flex;gap:.6rem;margin-top:1rem">
+            <a class="btn btn-ghost" href="cart.html">Volver al carrito</a>
+            <button class="btn btn-primary" id="next1" style="margin-left:auto">Continuar <span class="icon">arrow_forward</span></button>
+          </div>
+          ${user ? '' : '<p class="muted" style="font-size:.82rem;margin-top:1rem">¿Ya tienes cuenta? <a href="#" id="loginLink" style="color:var(--primary);font-weight:700">Inicia sesión</a> para autocompletar.</p>'}
+        </div>`;
+        if (!user) $('#loginLink').onclick = (e) => { e.preventDefault(); DDA.openAuth(() => location.reload()); };
+        $('#next1').onclick = () => {
+          form.name = $('#f_name').value.trim(); form.phone = $('#f_phone').value.trim(); form.email = $('#f_email').value.trim();
+          if (!form.name || !form.phone || !/.+@.+\..+/.test(form.email)) { $('#err1').textContent = 'Completa todos los campos correctamente.'; return; }
+          setStep(2);
+        };
+      }
+      if (step === 2) {
+        b.innerHTML = `<div class="panel"><h3 style="margin-bottom:1.2rem">Dirección de envío</h3>
+          <div class="field"><label>Dirección *</label><input class="input" id="f_addr" value="${DDA.esc(form.address)}" placeholder="Calle 10 # 4-20" required></div>
+          <div class="grid cols-2">
+            <div class="field"><label>Ciudad</label><input class="input" id="f_city" value="${DDA.esc(form.city)}"></div>
+            <div class="field"><label>Indicaciones (opcional)</label><input class="input" id="f_notes" value="${DDA.esc(form.notes)}" placeholder="Apto, referencia…"></div>
+          </div>
+          <h3 style="margin:1.4rem 0 .8rem;font-size:1.1rem">Método de entrega</h3>
+          ${shippingOpts.map(o => `<label class="pay-method ${form.shipping === o.id ? 'active' : ''}" data-ship="${o.id}">
+            <input type="radio" name="ship" ${form.shipping === o.id ? 'checked' : ''} hidden>
+            <span class="pm-ic"><span class="icon">${o.id === 'pickup' ? 'storefront' : o.id === 'express' ? 'bolt' : 'local_shipping'}</span></span>
+            <div style="flex:1"><b>${o.label}</b><small>${o.desc}</small></div><b style="font-size:.85rem">${o.price}</b></label>`).join('')}
+          <span class="err" id="err2"></span>
+          <div style="display:flex;gap:.6rem;margin-top:1rem">
+            <button class="btn btn-ghost" id="back2">Atrás</button>
+            <button class="btn btn-primary" id="next2" style="margin-left:auto">Continuar <span class="icon">arrow_forward</span></button></div></div>`;
+        b.querySelectorAll('[data-ship]').forEach(el => el.onclick = () => { form.shipping = el.dataset.ship; b.querySelectorAll('[data-ship]').forEach(x => x.classList.toggle('active', x === el)); summary(); });
+        $('#back2').onclick = () => setStep(1);
+        $('#next2').onclick = () => { form.address = $('#f_addr').value.trim(); form.city = $('#f_city').value.trim(); form.notes = $('#f_notes').value.trim();
+          if (form.shipping !== 'pickup' && !form.address) { $('#err2').textContent = 'Indica una dirección de envío.'; return; } setStep(3); };
+      }
+      if (step === 3) {
+        b.innerHTML = `<div class="panel"><h3 style="margin-bottom:1.2rem">Método de pago</h3>
+          ${payMethods.map(([name, code, desc]) => `<label class="pay-method ${form.paymentMethod === name ? 'active' : ''}" data-pay="${name}">
+            <input type="radio" name="pay" ${form.paymentMethod === name ? 'checked' : ''} hidden>
+            <span class="pm-ic">${code}</span><div style="flex:1"><b>${name}</b><small>${desc}</small></div>
+            <span class="icon" style="color:var(--primary)">${form.paymentMethod === name ? 'radio_button_checked' : 'radio_button_unchecked'}</span></label>`).join('')}
+          <div id="cardFields"></div>
+          <p class="muted" style="font-size:.8rem;margin-top:1rem"><span class="icon" style="font-size:1.1em">lock</span> Pago simulado para demostración. No se procesan cobros reales.</p>
+          <div style="display:flex;gap:.6rem;margin-top:1rem">
+            <button class="btn btn-ghost" id="back3">Atrás</button>
+            <button class="btn btn-primary" id="next3" style="margin-left:auto">Revisar pedido <span class="icon">arrow_forward</span></button></div></div>`;
+        const renderCard = () => {
+          const cf = $('#cardFields');
+          if (['Tarjeta de crédito', 'Stripe', 'Mercado Pago'].includes(form.paymentMethod)) {
+            cf.innerHTML = `<div class="field" style="margin-top:1rem"><label>Número de tarjeta</label><input class="input" placeholder="4242 4242 4242 4242" inputmode="numeric"></div>
+              <div class="grid cols-2"><div class="field"><label>Vencimiento</label><input class="input" placeholder="MM/AA"></div>
+              <div class="field"><label>CVC</label><input class="input" placeholder="123"></div></div>`;
+          } else if (['Nequi', 'Daviplata'].includes(form.paymentMethod)) {
+            cf.innerHTML = `<div class="field" style="margin-top:1rem"><label>Número de celular asociado</label><input class="input" placeholder="300 123 4567"></div>`;
+          } else cf.innerHTML = '';
+        };
+        renderCard();
+        b.querySelectorAll('[data-pay]').forEach(el => el.onclick = () => { form.paymentMethod = el.dataset.pay; b.querySelectorAll('[data-pay]').forEach(x => { x.classList.toggle('active', x === el); x.querySelector('.icon:last-child').textContent = x === el ? 'radio_button_checked' : 'radio_button_unchecked'; }); renderCard(); });
+        $('#back3').onclick = () => setStep(2);
+        $('#next3').onclick = () => setStep(4);
+      }
+      if (step === 4) {
+        const t = Store.totals();
+        b.innerHTML = `<div class="panel"><h3 style="margin-bottom:1rem">Revisa y confirma</h3>
+          <div class="grid cols-2" style="gap:1rem">
+            <div><h4 style="font-family:var(--sans);font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--outline);margin-bottom:.4rem">Contacto</h4>
+              <p>${DDA.esc(form.name)}<br>${DDA.esc(form.email)}<br>${DDA.esc(form.phone)}</p></div>
+            <div><h4 style="font-family:var(--sans);font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--outline);margin-bottom:.4rem">Entrega</h4>
+              <p>${form.shipping === 'pickup' ? 'Recoger en tienda · La Candelaria' : DDA.esc(form.address) + '<br>' + DDA.esc(form.city)}<br><span class="muted">${shippingOpts.find(s => s.id === form.shipping).label}</span></p></div>
+            <div><h4 style="font-family:var(--sans);font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--outline);margin-bottom:.4rem">Pago</h4>
+              <p>${DDA.esc(form.paymentMethod)}</p></div>
+          </div>
+          <label class="checkbox" style="margin-top:1.2rem"><input type="checkbox" id="terms"> Acepto los términos y la política de privacidad.</label>
+          <span class="err" id="err4"></span>
+          <div style="display:flex;gap:.6rem;margin-top:1rem">
+            <button class="btn btn-ghost" id="back4">Atrás</button>
+            <button class="btn btn-primary btn-lg" id="placeOrder" style="margin-left:auto"><span class="icon">lock</span> Pagar ${DDA.money(window._finalTotal)}</button></div></div>`;
+        $('#back4').onclick = () => setStep(3);
+        $('#placeOrder').onclick = () => {
+          if (!$('#terms').checked) { $('#err4').textContent = 'Debes aceptar los términos.'; return; }
+          const btn = $('#placeOrder'); btn.disabled = true; btn.innerHTML = '<span class="icon spin">progress_activity</span> Procesando pago…';
+          setTimeout(() => {
+            const order = Store.placeOrder(form);
+            sessionStorage.setItem('lastOrder', JSON.stringify(order));
+            location.href = 'confirmation.html';
+          }, 1400);
+        };
+      }
+    }
+    setStep(1);
+  </script>
+</body>
+</html>

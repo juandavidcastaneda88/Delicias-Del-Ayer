@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog · Delicias del Ayer</title>
+  <meta name="description" content="Historias, técnicas y cultura de la repostería tradicional colombiana.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>📖</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <main id="main">
+    <div class="container section" style="padding-top:2rem">
+      <div id="view"></div>
+    </div>
+  </main>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    DDA.boot();
+    const $ = (s) => document.querySelector(s);
+    const D = window.DDA_DATA;
+    const slug = new URLSearchParams(location.search).get('post');
+
+    function list() {
+      const [feat, ...rest] = D.blog;
+      $('#view').innerHTML = `
+        <nav class="crumbs"><a href="index.html">Inicio</a><span class="icon">chevron_right</span><span>Blog</span></nav>
+        <div style="max-width:640px;margin-bottom:2rem"><span class="eyebrow">Del horno a tu pantalla</span><h1>Nuestro blog</h1>
+          <p class="lead" style="margin-top:.5rem">Recetas, técnicas artesanales y la cultura dulce de Colombia.</p></div>
+        <div class="blog-hero" style="margin-bottom:2rem">
+          <a class="post-card reveal" href="blog.html?post=${feat.slug}">
+            <img src="${feat.image}" data-fb="${feat.fallback}" onerror="DDA.imgFallback(this)" alt="${DDA.esc(feat.title)}">
+            <div class="post-body"><div class="post-meta"><span class="tag brown">${DDA.esc(feat.category)}</span><span>${feat.readMins} min de lectura</span></div>
+            <h2 style="font-size:1.8rem">${DDA.esc(feat.title)}</h2><p class="muted">${DDA.esc(feat.excerpt)}</p>
+            <span class="post-meta" style="margin-top:auto">Por ${DDA.esc(feat.author)} · ${DDA.esc(feat.date)}</span></div></a>
+          <div style="display:flex;flex-direction:column;gap:1.2rem">
+            ${rest.map((b, i) => `<a class="post-card reveal" data-d="${i}" href="blog.html?post=${b.slug}" style="flex-direction:row">
+              <img src="${b.image}" data-fb="${b.fallback}" onerror="DDA.imgFallback(this)" alt="${DDA.esc(b.title)}" style="width:140px;aspect-ratio:1;flex-shrink:0">
+              <div class="post-body" style="padding:1rem"><div class="post-meta"><span>${DDA.esc(b.category)}</span></div>
+              <h3 style="font-size:1.1rem">${DDA.esc(b.title)}</h3><p class="muted" style="font-size:.85rem">${DDA.esc(b.excerpt)}</p></div></a>`).join('')}
+          </div>
+        </div>
+        <div class="newsletter reveal">
+          <span class="eyebrow">No te pierdas nada</span><h2>Suscríbete al boletín</h2>
+          <form id="nf"><input class="input" type="email" placeholder="tucorreo@ejemplo.com" required><button class="btn btn-primary">Suscribirme</button></form>
+        </div>`;
+      $('#nf').onsubmit = (e) => { e.preventDefault(); Store.subscribeNewsletter(e.target.querySelector('input').value); e.target.reset(); DDA.toast('¡Suscrito!', 'success'); };
+      DDA.rescanReveal();
+    }
+
+    function article(b) {
+      const more = D.blog.filter(x => x.slug !== b.slug).slice(0, 2);
+      document.title = b.title + ' · Blog Delicias del Ayer';
+      $('#view').innerHTML = `
+        <nav class="crumbs"><a href="index.html">Inicio</a><span class="icon">chevron_right</span><a href="blog.html">Blog</a><span class="icon">chevron_right</span><span>${DDA.esc(b.title)}</span></nav>
+        <article style="max-width:760px;margin-inline:auto">
+          <div class="post-meta" style="justify-content:center;margin-bottom:.6rem"><span class="tag brown">${DDA.esc(b.category)}</span><span>${b.readMins} min</span></div>
+          <h1 class="center">${DDA.esc(b.title)}</h1>
+          <p class="center muted" style="margin:.6rem 0 1.6rem">Por ${DDA.esc(b.author)} · ${DDA.esc(b.date)}</p>
+          <img src="${b.image}" data-fb="${b.fallback}" onerror="DDA.imgFallback(this)" alt="${DDA.esc(b.title)}" style="width:100%;border-radius:var(--radius-lg);box-shadow:var(--shadow);margin-bottom:1.6rem">
+          <p class="lead" style="font-size:1.25rem;color:var(--primary)">${DDA.esc(b.excerpt)}</p>
+          <p style="margin:1.2rem 0;font-size:1.05rem">${DDA.esc(b.body)}</p>
+          <p style="margin:1.2rem 0;font-size:1.05rem">En Delicias del Ayer creemos que cada receta cuenta una historia. Por eso protegemos nuestras técnicas tradicionales mientras seguimos innovando con cariño. Gracias por acompañarnos en este viaje dulce.</p>
+          <div style="display:flex;gap:.6rem;align-items:center;margin:2rem 0;padding:1.2rem;background:var(--surface-low);border-radius:var(--radius-lg)">
+            <span class="icon" style="color:var(--secondary);font-size:1.6rem">share</span>
+            <b>¿Te gustó?</b> Compártelo con quien ame el buen dulce.
+          </div>
+
+          <h3 style="margin:2rem 0 1rem">Comentarios</h3>
+          <div id="comments"></div>
+          <form id="cForm" style="margin-top:1rem">
+            <textarea class="input" id="cText" placeholder="Escribe un comentario…"></textarea>
+            <button class="btn btn-primary" style="margin-top:.6rem">Comentar</button>
+          </form>
+        </article>
+        <section class="section" style="padding-bottom:0"><h2 style="text-align:center;margin-bottom:1.4rem">Sigue leyendo</h2>
+          <div class="grid cols-2" style="max-width:760px;margin-inline:auto">
+            ${more.map(m => `<a class="post-card" href="blog.html?post=${m.slug}"><img src="${m.image}" data-fb="${m.fallback}" onerror="DDA.imgFallback(this)" alt="${DDA.esc(m.title)}">
+            <div class="post-body"><div class="post-meta"><span>${DDA.esc(m.category)}</span></div><h3 style="font-size:1.1rem">${DDA.esc(m.title)}</h3></div></a>`).join('')}
+          </div></section>`;
+
+      let comments = [{ author: 'Andrea M.', text: '¡Qué historia tan bonita! Ahora aprecio aún más cada bocado.' }];
+      const renderC = () => $('#comments').innerHTML = comments.map(c => `<div class="review"><b>${DDA.esc(c.author)}</b><p style="margin-top:.3rem">${DDA.esc(c.text)}</p></div>`).join('');
+      renderC();
+      $('#cForm').onsubmit = (e) => { e.preventDefault(); const v = $('#cText').value.trim(); if (!v) return;
+        DDA.requireAuth(() => { comments.unshift({ author: Store.currentUser().name, text: v }); renderC(); $('#cText').value = ''; DDA.toast('Comentario publicado', 'success'); }); };
+    }
+
+    const post = slug ? D.blog.find(b => b.slug === slug) : null;
+    post ? article(post) : list();
+  </script>
+</body>
+</html>
